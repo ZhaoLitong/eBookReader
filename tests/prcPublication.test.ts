@@ -39,3 +39,25 @@ it('rejects invalid record offsets, truncated records and invalid back reference
   await expect(prcPublication(prcFixture().slice(0, -2), 'book.prc', 'test')).rejects.toThrow(/not a readable/);
   await expect(prcPublication(prcFixture({ palm: true, text: 'aaa', compressed: new Uint8Array([0x80, 8]) }), 'book.prc', 'test')).rejects.toThrow(/not a readable/);
 });
+it.each([false, true])('accepts empty auxiliary records (empty final record: %s)', async emptyFinal => {
+  const original = prcFixture();
+  const data = new Uint8Array(original.byteLength + 16 + (emptyFinal ? 0 : 1));
+  data.set(new Uint8Array(original).subarray(0, 78));
+  data.set(new Uint8Array(original).subarray(96), 112);
+  const view = new DataView(data.buffer);
+  view.setUint16(76, 4);
+  view.setUint32(78, 112);
+  view.setUint32(86, new DataView(original).getUint32(86) + 16);
+  view.setUint32(94, original.byteLength + 16);
+  view.setUint32(102, original.byteLength + 16);
+  const pub = await inspectPublication(await prcPublication(data.buffer, 'book.mobi', 'test'));
+  expect(pub.title).toBe('The PRC Garden');
+  expect(await pub.zip.file('EPUB/part-0.xhtml')!.async('string')).toContain('Hello 花园');
+});
+it('still rejects missing text and offsets beyond EOF', async () => {
+  const missing = prcFixture();
+  const start = new DataView(missing).getUint32(86);
+  await expect(prcPublication(missing.slice(0, start), 'book.mobi', 'test')).rejects.toThrow(/not a readable/);
+  const beyond = prcFixture(); new DataView(beyond).setUint32(86, beyond.byteLength + 1);
+  await expect(prcPublication(beyond, 'book.mobi', 'test')).rejects.toThrow(/not a readable/);
+});

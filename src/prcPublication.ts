@@ -38,7 +38,9 @@ export async function prcPublication(bytes: ArrayBuffer, filename: string, id: s
   const offsets: number[] = [];
   for (let i = 0; i < count; i++) {
     const offset = view.getUint32(78 + i * 8);
-    if (offset < tableEnd || offset >= data.length || (i > 0 && offset <= offsets[i - 1])) throw invalid();
+    // Palm databases may contain empty auxiliary records, including at EOF.
+    // Repeated offsets represent empty records; only backwards/out-of-range offsets are invalid.
+    if (offset < tableEnd || offset > data.length || (i > 0 && offset < offsets[i - 1])) throw invalid();
     offsets.push(offset);
   }
   offsets.push(data.length);
