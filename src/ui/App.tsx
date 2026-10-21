@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { library } from '../repository';
 import { defaultSettings, errorMessage, type BookMeta, type BookSummary, type Settings } from '../types';
 import { Dialog } from './Dialog';
@@ -74,7 +75,8 @@ export function App() {
     <main className="shelf-main">
       <div className="shelf-intro"><div><p className="eyebrow">YOUR PERSONAL LIBRARY</p><h1>A little room<br />for your next chapter.</h1><p className="intro-copy">Your books, your pace. Pick up right where you left off.</p></div><div className="intro-art" aria-hidden="true"><div className="sun" /><div className="art-book one" /><div className="art-book two" /><div className="art-book three" /><div className="art-shelf" /></div></div>
       <section aria-labelledby="shelf-title"><div className="section-heading"><div><h2 id="shelf-title">On your shelf <span className="book-count">{books.length}</span></h2><p>{books.length ? 'A good story is always within reach.' : 'Good things begin with an open book.'}</p></div><button className="primary" disabled={importing || storageError || loading} onClick={() => picker.current?.click()}>{importing ? 'Importing…' : '+ Import EPUB'}</button></div>
-        <input ref={picker} type="file" accept=".epub,application/epub+zip" aria-label="Choose EPUB file" hidden onChange={event => void importBook(event.target.files?.[0])} />
+        {/* Android providers may label EPUBs as ZIPs or generic files. Validate their contents after selection. */}
+        <input ref={picker} type="file" accept={Capacitor.getPlatform() === 'android' ? '*/*' : '.epub,application/epub+zip'} aria-label="Choose EPUB file" hidden onChange={event => void importBook(event.target.files?.[0])} />
         {notice && <div className="notice" role="alert"><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div>}
         {settingsError && <div className="notice error" role="alert"><span>{settingsError}</span><button onClick={() => changeSettings(settings)}>Retry settings save</button></div>}
         {storageError ? <div className="empty-state" role="alert"><h3>Your library couldn’t be opened</h3><p>Make sure this app can store data on your device, then try again.</p><button className="primary" onClick={() => void refresh()}>Retry</button></div> : loading ? <div className="empty-state" role="status"><div className="spinner" /><p>Opening your library…</p></div> : books.length ? <div className="book-grid">{books.map(book => <article className="book-card" key={book.id}>
