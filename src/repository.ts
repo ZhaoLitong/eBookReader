@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { defaultSettings, normalizeSettings, ReaderError, type Assets, type BookMeta, type BookSummary, type Cover, type LocationCache, type ReadingState, type Settings } from './types';
 import { inspectPublication, MAX_BYTES } from './publication';
 import { textPublication } from './textPublication';
+import { prcPublication } from './prcPublication';
 
 export class LibraryDatabase extends Dexie {
   books!: EntityTable<BookMeta, 'id'>;
@@ -48,6 +49,7 @@ export class IndexedLibrary implements LibraryRepository {
     const id = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
     if (await this.get(id)) return id;
     if (/\.txt$/i.test(file.name)) bytes = await textPublication(bytes, file.name, id);
+    else if (/\.(prc|mobi)$/i.test(file.name)) bytes = await prcPublication(bytes, file.name, id);
     const publication = await inspectPublication(bytes);
     const meta: BookMeta = {
       id, filename: file.name, title: publication.title || file.name.replace(/\.epub$/i, '') || 'Untitled book',

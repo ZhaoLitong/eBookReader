@@ -1,6 +1,6 @@
 # EPUB Reader
 
-An offline bookshelf and paged EPUB reader built with TypeScript, React, epub.js, Dexie, and Capacitor. Import plain-text TXT files or reflowable, DRM-free EPUB 2/3 files, adjust text size and theme, navigate chapters, and resume at your last saved passage.
+An offline bookshelf and paged EPUB reader built with TypeScript, React, epub.js, Dexie, and Capacitor. Import plain-text TXT files, text from legacy PRC/MOBI books, or reflowable, DRM-free EPUB 2/3 files, adjust text size and theme, navigate chapters, and resume at your last saved passage.
 
 The behavior contract is [docs/spec.md](docs/spec.md). Verification results and remaining device checks are recorded in [docs/verification.md](docs/verification.md).
 
@@ -87,6 +87,7 @@ The import picker copies the file into app-local storage. No broad storage permi
 
 - Books, covers, reading positions, and settings live in IndexedDB. Original EPUB blobs are separate from shelf metadata. There is no backend, sync, account, analytics, or export/backup.
 - TXT files support UTF-8 (with or without a BOM) and UTF-16 with a BOM. The filename becomes the title; line breaks and indentation are preserved. Text is stored as a generated EPUB, with numbered parts for longer files, so pagination, themes, and saved progress work as usual. Empty, binary, and unsupported-encoding text files produce an error.
+- PRC/MOBI support imports **text only** from unencrypted legacy Mobipocket (through version 7) and PalmDOC books, with uncompressed or PalmDOC-compressed text. UTF-8 and Windows-1252 Mobipocket text are supported; PalmDOC uses Windows-1252. The embedded Mobipocket title is used when present. Images, original formatting, links, author metadata, and original contents are not preserved. The converted text uses the normal paginated reader and saved positions. HUFF/CDIC compression, KF8, encryption, and non-book Palm applications are unsupported; convert those formats to EPUB where possible. Decoded PRC text is limited to 64 MiB. A PRC file alone is sufficient; companion OPF and cover files are not imported. Compatibility has been tested with synthetic fixtures; real-book and Android checks remain necessary.
 - Reading positions use EPUB CFIs rather than rendered page numbers. Position changes are saved after a 300 ms debounce and flushed when leaving/backgrounding. Abrupt termination can lose the last uncommitted change.
 - Books are identified by SHA-256 of their original bytes. Importing identical bytes under another filename reopens the existing entry. Different file bytes, including ZIP metadata, count as a different book.
 - Input limit: 100 MiB; expanded archive limit: 250 MiB; entry limit: 10,000. Reading performance still depends on book complexity and device memory.

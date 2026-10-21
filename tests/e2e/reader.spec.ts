@@ -1,5 +1,21 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fixture } from '../fixtures';
+import { prcFixture } from '../prcFixtures';
+
+test('PRC imports, reads, saves progress and resumes', async ({ page }) => {
+  await page.goto('/');
+  const text = '<html><body><h1>PRC garden</h1>' + Array.from({ length: 120 }, (_, i) => `<p>Passage ${i}. A quiet garden grows beside the house. Every page holds a new discovery.</p>`).join('') + '</body></html>';
+  await page.locator('input[type=file]').setInputFiles({ name: 'garden.prc', mimeType: 'application/octet-stream', buffer: Buffer.from(prcFixture({ text })) });
+  await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeEnabled();
+  await expect(page.frameLocator('iframe').getByText('PRC garden', { exact: true })).toBeVisible();
+  await expect.poll(() => savedCfi(page)).toContain('epubcfi('); const first = await savedCfi(page);
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect.poll(() => savedCfi(page)).not.toBe(first);
+  await page.waitForTimeout(700); const position = await savedCfi(page);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Previous page', exact: true })).toBeEnabled();
+  await expect.poll(() => savedCfi(page)).toBe(position);
+});
 
 test('TXT imports, paginates, resumes and displays markup as literal text', async ({ page }) => {
   await page.goto('/');

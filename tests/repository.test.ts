@@ -3,11 +3,20 @@ import { IndexedLibrary, LibraryDatabase } from '../src/repository';
 import { fixture } from './fixtures';
 import { MAX_BYTES } from '../src/publication';
 import { normalizeSettings } from '../src/types';
+import { prcFixture } from './prcFixtures';
 
 const databases: LibraryDatabase[] = [];
 function repository() { const db = new LibraryDatabase(`test-${crypto.randomUUID()}`); databases.push(db); return new IndexedLibrary(db); }
 afterEach(async () => { vi.restoreAllMocks(); await Promise.all(databases.splice(0).map(db => db.delete())); });
 describe('library import and persistence', () => {
+  it('stores PRC as a readable publication, deduplicates, and rejects encryption without records', async () => {
+    const repo = repository(); const bytes = prcFixture();
+    const id = await repo.importBook(new File([bytes], 'garden.PRC', { type: 'application/octet-stream' }));
+    expect(await repo.get(id)).toMatchObject({ title: 'The PRC Garden', filename: 'garden.PRC' });
+    expect(await repo.importBook(new File([bytes], 'renamed.mobi'))).toBe(id);
+    await expect(repo.importBook(new File([prcFixture({ encryption: 1 })], 'protected.prc'))).rejects.toThrow(/encrypted/);
+    expect(await repo.list()).toHaveLength(1);
+  });
   it('imports TXT with a generic MIME type and deduplicates using original bytes', async () => {
     const repo = repository(); const text = 'Hello 花园\nA second line.';
     const id = await repo.importBook(new File([text], 'Garden.TXT', { type: 'application/octet-stream' }));
