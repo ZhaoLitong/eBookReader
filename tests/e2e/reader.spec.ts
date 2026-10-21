@@ -1,6 +1,22 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fixture } from '../fixtures';
 import { prcFixture } from '../prcFixtures';
+import JSZip from 'jszip';
+
+test('malformed EPUB chapter is recovered without scripts or remote requests', async ({ page }) => {
+  const remote: string[] = [];
+  page.on('request', request => { if (request.url().startsWith('https://hostile.invalid')) remote.push(request.url()); });
+  const zip = await JSZip.loadAsync(await fixture({ hostile: true }));
+  const chapter = await zip.file('EPUB/chapter1.xhtml')!.async('string');
+  zip.file('EPUB/chapter1.xhtml', chapter.replace('<h1>', '<p><divlity>Recovered text</div></p><h1>'));
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles({ name: 'malformed.epub', mimeType: 'application/epub+zip', buffer: Buffer.from(await zip.generateAsync({ type: 'arraybuffer' })) });
+  await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeEnabled();
+  await expect(page.frameLocator('iframe').getByText('Recovered text', { exact: true })).toBeVisible();
+  await expect(page.frameLocator('iframe').locator('script,iframe,[onerror]')).toHaveCount(0);
+  expect(remote).toEqual([]);
+  expect(await page.evaluate(() => (window as unknown as { __bookScriptRan?: boolean }).__bookScriptRan)).toBeUndefined();
+});
 
 test('PRC imports, reads, saves progress and resumes', async ({ page }) => {
   await page.goto('/');

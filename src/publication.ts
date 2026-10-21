@@ -6,14 +6,25 @@ const MAX_EXPANDED = 250 * 1024 * 1024;
 export const BOOK_CSP = "default-src 'none'; script-src 'none'; style-src 'unsafe-inline' blob: data:; img-src blob: data:; font-src blob: data:; media-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 const xmlExtensions = /\.(?:xhtml|html|htm|svg|xml|opf|ncx)$/i;
 const invalid = () => new ReaderError('invalid', 'This file is not a readable EPUB. Choose a valid, DRM-free EPUB.');
-function parseXml(text: string): Document {
+function parseXml(text: string, recoverHtml = false): Document {
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) {
     // A simple XHTML doctype is common; external/internal entities are never needed.
     if (/<!ENTITY|<!DOCTYPE[^>]*\[/i.test(text)) throw invalid();
     text = text.replace(/<!DOCTYPE[^>]*>/gi, '');
   }
   const doc = new DOMParser().parseFromString(text, 'application/xml');
-  if (doc.getElementsByTagName('parsererror').length) throw invalid();
+  if (doc.getElementsByTagName('parsererror').length) {
+    if (!recoverHtml || !/<html(?:\s|>)/i.test(text)) throw invalid();
+    // A template parses HTML without loading images/frames or executing scripts.
+    // Unlike XML, its parser repairs common mismatched tags from ebook converters.
+    const template = document.createElement('template');
+    const html = template.content.ownerDocument.createElement('html');
+    html.innerHTML = text.replace(/^\s*<\?xml[^>]*\?>/i, '');
+    const recovered = document.implementation.createDocument('http://www.w3.org/1999/xhtml', 'html');
+    // Parse in an html context to retain head/body structure and body attributes.
+    recovered.replaceChild(recovered.importNode(html, true), recovered.documentElement);
+    return recovered;
+  }
   return doc;
 }
 const elements = (root: Document | Element, name: string) => Array.from(root.getElementsByTagNameNS('*', name));
@@ -131,7 +142,7 @@ export async function preparePublication(bytes: ArrayBuffer): Promise<{ bytes: A
   for (const entry of Object.values(publication.zip.files)) {
     if (entry.dir) continue;
     if (xmlExtensions.test(entry.name)) {
-      const doc = parseXml(await entry.async('string'));
+      const doc = parseXml(await entry.async('string'), /\.(?:xhtml|html|htm)$/i.test(entry.name));
       sanitizeDocument(doc);
       publication.zip.file(entry.name, new XMLSerializer().serializeToString(doc));
     } else if (/\.css$/i.test(entry.name)) publication.zip.file(entry.name, safeCss(await entry.async('string')));
