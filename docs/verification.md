@@ -4,6 +4,8 @@ Implementation baseline: [spec.md](spec.md), version 1.0.
 
 ## Automated checks
 
+TXT support follow-up (2026-10-21): 19 unit tests and six of seven browser tests passed, including TXT import, pagination, literal markup, saved-position restoration, UTF-8/UTF-16 decoding, and invalid-text rejection. The existing rapid reader-exit browser test timed out in the full run and passed on a focused rerun; intermittent timing remains a limitation. Production build and Android asset sync passed. Windows blocked preview port 4173, so browser checks used `PLAYWRIGHT_PORT=15473`. Physical Android TXT import remains unverified: select a `.txt` file from Downloads, read forward, close/reopen, and confirm the saved passage; also cancel the picker and try an empty file.
+
 Verified on 2026-10-21. Browser tests use local Google Chrome against a production preview build. They do not establish Android device compatibility.
 
 - `npm test`: 13 tests passed across three test files.

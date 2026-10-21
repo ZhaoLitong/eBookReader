@@ -1,6 +1,24 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fixture } from '../fixtures';
 
+test('TXT imports, paginates, resumes and displays markup as literal text', async ({ page }) => {
+  await page.goto('/');
+  const text = '<script>window.bad = true</script>\n花园 & friends\n\n' + Array.from({ length: 150 }, (_, i) => `Passage ${i}. A quiet garden grows beside the house. Every page holds a new discovery.`).join('\n');
+  await page.locator('input[type=file]').setInputFiles({ name: 'Garden.TXT', mimeType: 'application/octet-stream', buffer: Buffer.from(text) });
+  await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeEnabled();
+  await expect(page.frameLocator('iframe').getByText('<script>window.bad = true</script>', { exact: true })).toBeVisible();
+  await expect(page.frameLocator('iframe').locator('script')).toHaveCount(0);
+  const first = await savedCfi(page);
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect.poll(() => savedCfi(page)).not.toBe(first);
+  await page.waitForTimeout(700); const position = await savedCfi(page);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Previous page', exact: true })).toBeEnabled();
+  await expect.poll(() => savedCfi(page)).toBe(position);
+  await page.getByRole('button', { name: 'Back to shelf' }).click();
+  await expect(page.getByRole('button', { name: 'Read Garden', exact: true })).toBeVisible();
+});
+
 async function importFixture(page: Page, options: Parameters<typeof fixture>[0] = {}) {
   await page.locator('input[type=file]').setInputFiles({ name: 'garden.epub', mimeType: 'application/epub+zip', buffer: Buffer.from(await fixture(options)) });
   await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeEnabled({ timeout: 30000 });

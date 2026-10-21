@@ -1,6 +1,6 @@
 # EPUB Reader
 
-An offline bookshelf and paged EPUB reader built with TypeScript, React, epub.js, Dexie, and Capacitor. Import reflowable, DRM-free EPUB 2/3 files, adjust text size and theme, navigate chapters, and resume at your last saved passage.
+An offline bookshelf and paged EPUB reader built with TypeScript, React, epub.js, Dexie, and Capacitor. Import plain-text TXT files or reflowable, DRM-free EPUB 2/3 files, adjust text size and theme, navigate chapters, and resume at your last saved passage.
 
 The behavior contract is [docs/spec.md](docs/spec.md). Verification results and remaining device checks are recorded in [docs/verification.md](docs/verification.md).
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-Open the local address printed by Vite, normally `http://127.0.0.1:5173`. Click **Import EPUB** and select a book. A development server is not the offline deliverable.
+Open the local address printed by Vite, normally `http://127.0.0.1:5173`. Click **Import book** and select a book. A development server is not the offline deliverable.
 
 ```powershell
 npm run typecheck
@@ -86,6 +86,7 @@ The import picker copies the file into app-local storage. No broad storage permi
 ## Storage and supported books
 
 - Books, covers, reading positions, and settings live in IndexedDB. Original EPUB blobs are separate from shelf metadata. There is no backend, sync, account, analytics, or export/backup.
+- TXT files support UTF-8 (with or without a BOM) and UTF-16 with a BOM. The filename becomes the title; line breaks and indentation are preserved. Text is stored as a generated EPUB, with numbered parts for longer files, so pagination, themes, and saved progress work as usual. Empty, binary, and unsupported-encoding text files produce an error.
 - Reading positions use EPUB CFIs rather than rendered page numbers. Position changes are saved after a 300 ms debounce and flushed when leaving/backgrounding. Abrupt termination can lose the last uncommitted change.
 - Books are identified by SHA-256 of their original bytes. Importing identical bytes under another filename reopens the existing entry. Different file bytes, including ZIP metadata, count as a different book.
 - Input limit: 100 MiB; expanded archive limit: 250 MiB; entry limit: 10,000. Reading performance still depends on book complexity and device memory.

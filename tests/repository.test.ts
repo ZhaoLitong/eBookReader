@@ -8,6 +8,15 @@ const databases: LibraryDatabase[] = [];
 function repository() { const db = new LibraryDatabase(`test-${crypto.randomUUID()}`); databases.push(db); return new IndexedLibrary(db); }
 afterEach(async () => { vi.restoreAllMocks(); await Promise.all(databases.splice(0).map(db => db.delete())); });
 describe('library import and persistence', () => {
+  it('imports TXT with a generic MIME type and deduplicates using original bytes', async () => {
+    const repo = repository(); const text = 'Hello 花园\nA second line.';
+    const id = await repo.importBook(new File([text], 'Garden.TXT', { type: 'application/octet-stream' }));
+    expect(await repo.get(id)).toMatchObject({ title: 'Garden', filename: 'Garden.TXT', hasCover: false });
+    expect(await repo.importBook(new File([text], 'renamed.txt'))).toBe(id);
+    expect(await repo.list()).toHaveLength(1);
+    await expect(repo.importBook(new File([''], 'empty.txt'))).rejects.toThrow(/empty/);
+    expect(await repo.list()).toHaveLength(1);
+  });
   it('persists original bytes, metadata, state and cover, and deduplicates renamed files', async () => {
     const repo = repository(); const bytes = await fixture({ cover: true });
     const id = await repo.importBook(new File([bytes], 'garden.epub'));

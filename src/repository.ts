@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { defaultSettings, normalizeSettings, ReaderError, type Assets, type BookMeta, type BookSummary, type Cover, type LocationCache, type ReadingState, type Settings } from './types';
 import { inspectPublication, MAX_BYTES } from './publication';
+import { textPublication } from './textPublication';
 
 export class LibraryDatabase extends Dexie {
   books!: EntityTable<BookMeta, 'id'>;
@@ -41,11 +42,12 @@ export class IndexedLibrary implements LibraryRepository {
   async getBytes(id: string) { return (await this.db.assets.get(id))?.epub; }
   async getCover(id: string) { return (await this.db.covers.get(id))?.blob; }
   async importBook(file: File): Promise<string> {
-    if (file.size > MAX_BYTES) throw new ReaderError('size', 'This file exceeds the 100 MiB limit. Choose a smaller EPUB.');
+    if (file.size > MAX_BYTES) throw new ReaderError('size', 'This file exceeds the 100 MiB limit. Choose a smaller book.');
     let bytes: ArrayBuffer;
     try { bytes = await file.arrayBuffer(); } catch { throw new ReaderError('source', 'The selected file could not be read. Please select it again.'); }
     const id = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2, '0')).join('');
     if (await this.get(id)) return id;
+    if (/\.txt$/i.test(file.name)) bytes = await textPublication(bytes, file.name, id);
     const publication = await inspectPublication(bytes);
     const meta: BookMeta = {
       id, filename: file.name, title: publication.title || file.name.replace(/\.epub$/i, '') || 'Untitled book',
