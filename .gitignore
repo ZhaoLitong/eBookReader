@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+.vite/
+.npm-cache/
+android/.gradle/
+android/local.properties
+android/**/build/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
