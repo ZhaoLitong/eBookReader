@@ -4,6 +4,8 @@ import { library } from '../repository';
 import { defaultSettings, errorMessage, type BookMeta, type BookSummary, type Settings } from '../types';
 import { Dialog } from './Dialog';
 import { Reader } from './Reader';
+import { translate } from '../i18n';
+import { LanguageContext, LanguagePicker } from './Language';
 
 function currentId() { return /^#\/read\/([a-f0-9]{64})$/.exec(window.location.hash)?.[1] ?? null; }
 function BookCover({ book }: { book: BookSummary }) {
@@ -20,6 +22,7 @@ export function App() {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [selected, setSelected] = useState<BookMeta | null>(null);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const t = (message: string, values?: Record<string, string | number>) => translate(settings.language, message, values);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState(false);
   const [notice, setNotice] = useState('');
@@ -50,6 +53,7 @@ export function App() {
     return () => { alive = false; };
   }, [id, shelf]);
   useEffect(() => { document.documentElement.dataset.theme = settings.theme; document.querySelector('meta[name="theme-color"]')?.setAttribute('content', settings.theme === 'dark' ? '#18211e' : '#f5f2eb'); }, [settings]);
+  useEffect(() => { document.documentElement.lang = settings.language; document.title = translate(settings.language, 'EPUB Reader'); }, [settings.language]);
   const changeSettings = (next: Settings) => {
     setSettings(next);
     settingsWrite.current = settingsWrite.current.then(() => library.saveSettings(next)).then(() => setSettingsError('')).catch(() => setSettingsError('Reading settings could not be saved. Check your available storage.'));
@@ -69,24 +73,24 @@ export function App() {
     catch { setNotice('This book could not be removed. Please try again.'); }
     finally { setDeleting(false); }
   };
-  if (id && selected && !storageError && !loading) return <Reader key={selected.id} book={selected} settings={settings} onSettings={changeSettings} onExit={shelf} settingsError={settingsError} />;
-  return <div className="shelf-screen">
-    <header className="shelf-header"><a className="brand" href="#/" aria-label="EPUB Reader home"><span className="brand-mark">▤</span><span>EPUB Reader<span className="brand-caption">A PLACE FOR YOUR PAGES</span></span></a><button className="theme-toggle" aria-label={settings.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'} onClick={() => changeSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}>{settings.theme === 'light' ? '☾' : '☀'}</button></header>
+  if (id && selected && !storageError && !loading) return <LanguageContext.Provider value={settings.language}><Reader key={selected.id} book={selected} settings={settings} onSettings={changeSettings} onExit={shelf} settingsError={settingsError} /></LanguageContext.Provider>;
+  return <LanguageContext.Provider value={settings.language}><div className="shelf-screen">
+    <header className="shelf-header"><a className="brand" href="#/" aria-label={t('EPUB Reader home')}><span className="brand-mark">▤</span><span>{t('EPUB Reader')}<span className="brand-caption">{t('A PLACE FOR YOUR PAGES')}</span></span></a><div className="shelf-tools"><LanguagePicker settings={settings} onChange={changeSettings} /><button className="theme-toggle" aria-label={t(settings.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme')} onClick={() => changeSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}>{settings.theme === 'light' ? '☾' : '☀'}</button></div></header>
     <main className="shelf-main">
-      <div className="shelf-intro"><div><p className="eyebrow">YOUR PERSONAL LIBRARY</p><h1>A little room<br />for your next chapter.</h1><p className="intro-copy">Your books, your pace. Pick up right where you left off.</p></div><div className="intro-art" aria-hidden="true"><div className="sun" /><div className="art-book one" /><div className="art-book two" /><div className="art-book three" /><div className="art-shelf" /></div></div>
-      <section aria-labelledby="shelf-title"><div className="section-heading"><div><h2 id="shelf-title">On your shelf <span className="book-count">{books.length}</span></h2><p>{books.length ? 'A good story is always within reach.' : 'Good things begin with an open book.'}</p></div><button className="primary" disabled={importing || storageError || loading} onClick={() => picker.current?.click()}>{importing ? 'Importing…' : '+ Import book'}</button></div>
+      <div className="shelf-intro"><div><p className="eyebrow">{t('YOUR PERSONAL LIBRARY')}</p><h1>{t('A little room')}<br />{t('for your next chapter.')}</h1><p className="intro-copy">{t('Your books, your pace. Pick up right where you left off.')}</p></div><div className="intro-art" aria-hidden="true"><div className="sun" /><div className="art-book one" /><div className="art-book two" /><div className="art-book three" /><div className="art-shelf" /></div></div>
+      <section aria-labelledby="shelf-title"><div className="section-heading"><div><h2 id="shelf-title">{t('On your shelf')} <span className="book-count">{books.length}</span></h2><p>{t(books.length ? 'A good story is always within reach.' : 'Good things begin with an open book.')}</p></div><button className="primary" disabled={importing || storageError || loading} onClick={() => picker.current?.click()}>{t(importing ? 'Importing…' : '+ Import book')}</button></div>
         {/* Android providers may label EPUBs as ZIPs or generic files. Validate their contents after selection. */}
-        <input ref={picker} type="file" accept={Capacitor.getPlatform() === 'android' ? '*/*' : '.epub,.txt,.prc,.mobi,application/epub+zip,text/plain,application/x-mobipocket-ebook'} aria-label="Choose EPUB, TXT or PRC file" hidden onChange={event => void importBook(event.target.files?.[0])} />
-        {notice && <div className="notice" role="alert"><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div>}
-        {settingsError && <div className="notice error" role="alert"><span>{settingsError}</span><button onClick={() => changeSettings(settings)}>Retry settings save</button></div>}
-        {storageError ? <div className="empty-state" role="alert"><h3>Your library couldn’t be opened</h3><p>Make sure this app can store data on your device, then try again.</p><button className="primary" onClick={() => void refresh()}>Retry</button></div> : loading ? <div className="empty-state" role="status"><div className="spinner" /><p>Opening your library…</p></div> : books.length ? <div className="book-grid">{books.map(book => <article className="book-card" key={book.id}>
-          <button className="book-open" aria-label={`Read ${book.title}`} onClick={() => { window.location.hash = '/read/' + book.id; }}><BookCover book={book} /><h3 title={book.title}>{book.title}</h3><p title={book.author}>{book.author || 'Unknown author'}</p></button>
-          <div className="book-details"><span>{book.progress?.fraction != null ? `${Math.round(book.progress.fraction * 100)}% read` : book.progress?.cfi ? 'Continue reading' : 'Ready to begin'}</span><button className="remove-button" aria-label={`Remove ${book.title}`} onClick={() => setRemoving(book)}>Remove</button></div>
+        <input ref={picker} type="file" accept={Capacitor.getPlatform() === 'android' ? '*/*' : '.epub,.txt,.prc,.mobi,application/epub+zip,text/plain,application/x-mobipocket-ebook'} aria-label={t('Choose EPUB, TXT or PRC file')} hidden onChange={event => void importBook(event.target.files?.[0])} />
+        {notice && <div className="notice" role="alert"><span>{t(notice)}</span><button aria-label={t('Dismiss notice')} onClick={() => setNotice('')}>×</button></div>}
+        {settingsError && <div className="notice error" role="alert"><span>{t(settingsError)}</span><button onClick={() => changeSettings(settings)}>{t('Retry settings save')}</button></div>}
+        {storageError ? <div className="empty-state" role="alert"><h3>{t('Your library couldn’t be opened')}</h3><p>{t('Make sure this app can store data on your device, then try again.')}</p><button className="primary" onClick={() => void refresh()}>{t('Retry')}</button></div> : loading ? <div className="empty-state" role="status"><div className="spinner" /><p>{t('Opening your library…')}</p></div> : books.length ? <div className="book-grid">{books.map(book => <article className="book-card" key={book.id}>
+          <button className="book-open" aria-label={t('Read {title}', { title: book.title })} onClick={() => { window.location.hash = '/read/' + book.id; }}><BookCover book={book} /><h3 title={book.title}>{book.title}</h3><p title={book.author}>{book.author || t('Unknown author')}</p></button>
+          <div className="book-details"><span>{book.progress?.fraction != null ? t('{progress}% read', { progress: Math.round(book.progress.fraction * 100) }) : t(book.progress?.cfi ? 'Continue reading' : 'Ready to begin')}</span><button className="remove-button" aria-label={t('Remove {title}', { title: book.title })} onClick={() => setRemoving(book)}>{t('Remove')}</button></div>
           <div className="progress-track" aria-hidden="true"><div style={{ width: `${(book.progress?.fraction ?? 0) * 100}%` }} /></div>
-        </article>)}</div> : <div className="empty-state"><div className="empty-symbol" aria-hidden="true">▤</div><h3>Your next chapter starts here.</h3><p>Import a DRM-free EPUB, TXT or PRC book from your device.<br />PRC imports text only.<br />We’ll keep your place, so you can just keep reading.</p><button onClick={() => picker.current?.click()} disabled={importing}>Choose your first book <span aria-hidden="true">→</span></button></div>}
+        </article>)}</div> : <div className="empty-state"><div className="empty-symbol" aria-hidden="true">▤</div><h3>{t('Your next chapter starts here.')}</h3><p>{t('Import a DRM-free EPUB, TXT or PRC book from your device.')}<br />{t('PRC imports text only.')}<br />{t('We’ll keep your place, so you can just keep reading.')}</p><button onClick={() => picker.current?.click()} disabled={importing}>{t('Choose your first book')} <span aria-hidden="true">→</span></button></div>}
       </section>
-      <footer className="shelf-footer"><span>LOCAL BOOKS. QUIET MOMENTS.</span><span>Saved on this device · No account needed</span></footer>
+      <footer className="shelf-footer"><span>{t('LOCAL BOOKS. QUIET MOMENTS.')}</span><span>{t('Saved on this device · No account needed')}</span></footer>
     </main>
-    {removing && <Dialog title="Remove this book?" onClose={closeRemove}><p><strong>{removing.title}</strong> and its saved reading position will be removed from this device. Your original file will stay where it is.</p><div className="actions"><button onClick={closeRemove} disabled={deleting}>Keep book</button><button className="danger" onClick={() => void remove()} disabled={deleting}>{deleting ? 'Removing…' : 'Remove book'}</button></div></Dialog>}
-  </div>;
+    {removing && <Dialog title={t('Remove this book?')} onClose={closeRemove}><p><strong>{removing.title}</strong>{t(' and its saved reading position will be removed from this device. Your original file will stay where it is.')}</p><div className="actions"><button onClick={closeRemove} disabled={deleting}>{t('Keep book')}</button><button className="danger" onClick={() => void remove()} disabled={deleting}>{t(deleting ? 'Removing…' : 'Remove book')}</button></div></Dialog>}
+  </div></LanguageContext.Provider>;
 }

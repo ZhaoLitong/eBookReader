@@ -90,6 +90,8 @@ Internal publication links navigate within the current book and update the saved
 
 ### 3.4 Appearance and layout changes
 
+The app interface supports English (`en`) and Simplified Chinese (`zh-CN`). Provide a labeled language selector on the shelf and in Reading settings. Persist the explicit choice with global settings; for new or legacy settings without a valid choice, use Simplified Chinese for a Chinese device/browser locale and English otherwise. Translate app controls, dialogs, notices, errors, and accessible labels, and update the document language. Translate existing notices at render time so they follow language changes. Keep publication text and metadata unchanged. Changing only the interface language must not reload the book or change the current passage.
+
 Reading settings apply immediately and persist globally across app restarts and books. Disable font-size decrease/increase at the specified bounds. Themes apply to both app chrome and publication text/background while retaining readable contrast; do not invert publication images.
 
 Before font-size, orientation, viewport-size, or theme changes, retain the current content location. After the new layout settles, restore that location. The exact line may move, but the same passage must remain on the visible page. Ignore intermediate relayout events when deciding which position to save.
@@ -148,7 +150,7 @@ Start with database schema version 1 and explicit versioned migrations for subse
 | Book assets | Book ID, original EPUB blob, optional cover blob |
 | Reading state | Book ID, nullable CFI, nullable estimated fraction in `[0, 1]`, update timestamp |
 | Location cache | Book ID, cache format/version, generated epub.js locations |
-| Global settings | Theme (`light` or `dark`), font scale within the supported range |
+| Global settings | Theme (`light` or `dark`), font scale within the supported range, interface language (`en` or `zh-CN`) |
 
 Use UTC epoch milliseconds for timestamps. Treat cached location data and progress percentages as rebuildable; preserve original book bytes and saved CFIs during cache changes. Normalize missing or invalid settings to the product defaults without clearing the library.
 

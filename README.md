@@ -2,6 +2,8 @@
 
 An offline bookshelf and paged EPUB reader built with TypeScript, React, epub.js, Dexie, and Capacitor. Import plain-text TXT files, text from legacy PRC/MOBI books, or reflowable, DRM-free EPUB 2/3 files, adjust text size and theme, navigate chapters, and resume at your last saved passage.
 
+The interface supports English and Simplified Chinese (简体中文). Choose **Language / 语言** on the shelf or in **Reading settings / 阅读设置**. The choice is saved on the device and takes effect immediately, including notices and accessibility labels. Without a saved choice, Chinese device/browser locales use Simplified Chinese; other locales use English. Existing theme and font-size preferences are retained. Changing the interface language preserves the reading position and does not translate book text, titles, authors, or the publication's contents entries.
+
 The behavior contract is [docs/spec.md](docs/spec.md). Verification results and remaining device checks are recorded in [docs/verification.md](docs/verification.md).
 
 ## Browser development

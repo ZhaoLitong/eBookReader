@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IndexedLibrary, LibraryDatabase } from '../src/repository';
 import { fixture } from './fixtures';
 import { MAX_BYTES } from '../src/publication';
-import { normalizeSettings } from '../src/types';
+import { normalizeSettings, type Settings } from '../src/types';
 import { prcFixture } from './prcFixtures';
 
 const databases: LibraryDatabase[] = [];
@@ -71,7 +71,19 @@ describe('library import and persistence', () => {
     const second = await repo.importBook(new File([await fixture({ missingMeta: true })], 'second.epub'));
     await repo.markOpened(first); expect((await repo.list())[0].id).toBe(first);
     await repo.markOpened(second); expect((await repo.list())[0].id).toBe(second);
-    await repo.saveSettings({ theme: 'dark', fontScale: 120 }); expect(await repo.getSettings()).toEqual({ theme: 'dark', fontScale: 120 });
-    expect(normalizeSettings({ fontScale: 111 })).toEqual({ theme: 'light', fontScale: 100 });
+    await repo.saveSettings({ theme: 'dark', fontScale: 120, language: 'en' }); expect(await repo.getSettings()).toEqual({ theme: 'dark', fontScale: 120, language: 'en' });
+    expect(normalizeSettings({ fontScale: 111 })).toEqual({ theme: 'light', fontScale: 100, language: 'en' });
+  });
+  it('upgrades legacy settings without losing appearance and persists an explicit language', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN');
+    const repo = repository();
+    await repo.db.preferences.put({ key: 'settings', value: { theme: 'dark', fontScale: 120 } as Settings });
+    expect(await repo.getSettings()).toEqual({ theme: 'dark', fontScale: 120, language: 'zh-CN' });
+    await repo.saveSettings({ ...(await repo.getSettings()), language: 'en' });
+    repo.db.close(); await repo.db.open();
+    expect(await repo.getSettings()).toEqual({ theme: 'dark', fontScale: 120, language: 'en' });
+    await repo.saveSettings({ ...(await repo.getSettings()), language: 'zh-CN' });
+    repo.db.close(); await repo.db.open();
+    expect((await repo.getSettings()).language).toBe('zh-CN');
   });
 });

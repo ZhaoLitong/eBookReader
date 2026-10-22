@@ -4,11 +4,14 @@ import { ProgressWriter } from '../progress';
 import { library } from '../repository';
 import { errorMessage, type BookMeta, type ReaderLocation, type Settings, type TocEntry } from '../types';
 import { Dialog } from './Dialog';
+import { LanguagePicker, useTranslation } from './Language';
 
 function ContentsList({ entries, onSelect }: { entries: TocEntry[]; onSelect: (href: string) => void }) {
-  return <ol className="contents-list">{entries.map((entry, index) => <li key={entry.id || `${entry.href}-${index}`}><button onClick={() => onSelect(entry.href)}>{entry.label || 'Untitled chapter'}</button>{entry.children.length > 0 && <ContentsList entries={entry.children} onSelect={onSelect} />}</li>)}</ol>;
+  const t = useTranslation();
+  return <ol className="contents-list">{entries.map((entry, index) => <li key={entry.id || `${entry.href}-${index}`}><button onClick={() => onSelect(entry.href)}>{entry.label || t('Untitled chapter')}</button>{entry.children.length > 0 && <ContentsList entries={entry.children} onSelect={onSelect} />}</li>)}</ol>;
 }
 export function Reader({ book, settings, onSettings, onExit, settingsError }: { book: BookMeta; settings: Settings; onSettings: (settings: Settings) => void; onExit: () => void; settingsError: string }) {
+  const t = useTranslation();
   const host = useRef<HTMLDivElement>(null);
   const engine = useRef<EpubEngine | null>(null);
   const writer = useRef<ProgressWriter | null>(null);
@@ -70,30 +73,31 @@ export function Reader({ book, settings, onSettings, onExit, settingsError }: { 
   const navigate = (forward: boolean) => { void (forward ? engine.current?.next() : engine.current?.previous())?.catch(() => setFailure('This page could not be displayed. Retry opening the book.')); };
   return <main className="reader-screen">
     <header className="reader-header">
-      <button className="back-button" onClick={() => void exit()} aria-label="Back to shelf">← <span>Shelf</span></button>
-      <div className="reader-title"><span className="eyebrow">NOW READING</span><h1 title={book.title}>{book.title}</h1></div>
-      <div className="reader-tools"><button aria-label="Table of contents" title="Table of contents" onClick={() => setPanel('contents')} disabled={busy || !!failure}>☷</button><button aria-label="Reading settings" title="Reading settings" onClick={() => setPanel('settings')} disabled={busy || !!failure}>Aa</button></div>
+      <button className="back-button" onClick={() => void exit()} aria-label={t('Back to shelf')}>← <span>{t('Shelf')}</span></button>
+      <div className="reader-title"><span className="eyebrow">{t('NOW READING')}</span><h1 title={book.title}>{book.title}</h1></div>
+      <div className="reader-tools"><button aria-label={t('Table of contents')} title={t('Table of contents')} onClick={() => setPanel('contents')} disabled={busy || !!failure}>☷</button><button aria-label={t('Reading settings')} title={t('Reading settings')} onClick={() => setPanel('settings')} disabled={busy || !!failure}>Aa</button></div>
     </header>
-    {notice && <div className="notice" role="status"><span>{notice}</span><button aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div>}
-    {settingsError && <div className="notice error" role="alert"><span>{settingsError}</span><button onClick={() => onSettings(settings)}>Retry settings save</button></div>}
-    {unsaved && <div className="notice error" role="alert"><span>Progress has not been saved. Check available storage.</span><button onClick={() => void writer.current?.flush()}>Retry save</button></div>}
-    <section className="reading-paper" aria-label="EPUB reader">
-      <div ref={host} className="book-viewport" tabIndex={0} aria-label="Book pages" onKeyDown={event => {
+    {notice && <div className="notice" role="status"><span>{t(notice)}</span><button aria-label={t('Dismiss notice')} onClick={() => setNotice('')}>×</button></div>}
+    {settingsError && <div className="notice error" role="alert"><span>{t(settingsError)}</span><button onClick={() => onSettings(settings)}>{t('Retry settings save')}</button></div>}
+    {unsaved && <div className="notice error" role="alert"><span>{t('Progress has not been saved. Check available storage.')}</span><button onClick={() => void writer.current?.flush()}>{t('Retry save')}</button></div>}
+    <section className="reading-paper" aria-label={t('EPUB reader')}>
+      <div ref={host} className="book-viewport" tabIndex={0} aria-label={t('Book pages')} onKeyDown={event => {
         if (panel || busy || failure || !['ArrowLeft', 'ArrowRight'].includes(event.key) || (event.target as HTMLElement).closest('button,input')) return;
         event.preventDefault(); void engine.current?.physicalArrow(event.key === 'ArrowRight').catch(() => setFailure('This page could not be displayed. Retry opening the book.'));
       }} />
-      {busy && !failure && <div className="reader-overlay" role="status"><div className="spinner" /><p>Opening your book…</p></div>}
-      {failure && <div className="reader-overlay" role="alert"><h2>Couldn’t open this page</h2><p>{failure}</p><div className="actions"><button className="primary" onClick={() => setAttempt(n => n + 1)}>Retry</button><button onClick={() => void exit()}>Return to shelf</button></div></div>}
+      {busy && !failure && <div className="reader-overlay" role="status"><div className="spinner" /><p>{t('Opening your book…')}</p></div>}
+      {failure && <div className="reader-overlay" role="alert"><h2>{t('Couldn’t open this page')}</h2><p>{t(failure)}</p><div className="actions"><button className="primary" onClick={() => setAttempt(n => n + 1)}>{t('Retry')}</button><button onClick={() => void exit()}>{t('Return to shelf')}</button></div></div>}
     </section>
     <footer className="reader-footer" onKeyDown={event => { if (!panel && ['ArrowLeft', 'ArrowRight'].includes(event.key)) { event.preventDefault(); void engine.current?.physicalArrow(event.key === 'ArrowRight').catch(() => setFailure('This page could not be displayed. Retry opening the book.')); } }}>
-      <button onClick={() => navigate(false)} disabled={busy || !!failure || !!location?.atStart} aria-label="Previous page">← <span>Previous</span></button>
-      <div className="reading-progress"><span>{location?.fraction != null ? `${Math.round(location.fraction * 100)}%` : '—'}</span><small>estimated progress</small></div>
-      <button onClick={() => navigate(true)} disabled={busy || !!failure || !!location?.atEnd} aria-label="Next page"><span>Next</span> →</button>
+      <button onClick={() => navigate(false)} disabled={busy || !!failure || !!location?.atStart} aria-label={t('Previous page')}>← <span>{t('Previous')}</span></button>
+      <div className="reading-progress"><span>{location?.fraction != null ? `${Math.round(location.fraction * 100)}%` : '—'}</span><small>{t('estimated progress')}</small></div>
+      <button onClick={() => navigate(true)} disabled={busy || !!failure || !!location?.atEnd} aria-label={t('Next page')}><span>{t('Next')}</span> →</button>
     </footer>
-    {panel && <Dialog title={panel === 'contents' ? 'Contents' : 'Reading settings'} onClose={closePanel}>
-      {panel === 'contents' ? (contents.length ? <ContentsList entries={contents} onSelect={href => { setPanel(null); void engine.current?.navigate(href).catch(() => setNotice('This chapter could not be opened.')); }} /> : <p>This book doesn’t include a table of contents. Use Previous and Next to keep reading.</p>) : <div className="settings">
-        <div className="setting-row"><div><h3>Text size</h3><p>Make yourself comfortable.</p></div><div className="font-controls"><button aria-label="Decrease font size" disabled={settings.fontScale <= 80} onClick={() => onSettings({ ...settings, fontScale: settings.fontScale - 10 })}>A−</button><output aria-label="Font size">{settings.fontScale}%</output><button aria-label="Increase font size" disabled={settings.fontScale >= 160} onClick={() => onSettings({ ...settings, fontScale: settings.fontScale + 10 })}>A+</button></div></div>
-        <div className="setting-row"><div><h3>Appearance</h3><p>A little light, or a quiet night.</p></div><div className="theme-controls"><button aria-pressed={settings.theme === 'light'} onClick={() => onSettings({ ...settings, theme: 'light' })}>☀ Light</button><button aria-pressed={settings.theme === 'dark'} onClick={() => onSettings({ ...settings, theme: 'dark' })}>☾ Dark</button></div></div>
+    {panel && <Dialog title={t(panel === 'contents' ? 'Contents' : 'Reading settings')} onClose={closePanel}>
+      {panel === 'contents' ? (contents.length ? <ContentsList entries={contents} onSelect={href => { setPanel(null); void engine.current?.navigate(href).catch(() => setNotice('This chapter could not be opened.')); }} /> : <p>{t('This book doesn’t include a table of contents. Use Previous and Next to keep reading.')}</p>) : <div className="settings">
+        <div className="setting-row"><LanguagePicker settings={settings} onChange={onSettings} /></div>
+        <div className="setting-row"><div><h3>{t('Text size')}</h3><p>{t('Make yourself comfortable.')}</p></div><div className="font-controls"><button aria-label={t('Decrease font size')} disabled={settings.fontScale <= 80} onClick={() => onSettings({ ...settings, fontScale: settings.fontScale - 10 })}>A−</button><output aria-label={t('Font size')}>{settings.fontScale}%</output><button aria-label={t('Increase font size')} disabled={settings.fontScale >= 160} onClick={() => onSettings({ ...settings, fontScale: settings.fontScale + 10 })}>A+</button></div></div>
+        <div className="setting-row"><div><h3>{t('Appearance')}</h3><p>{t('A little light, or a quiet night.')}</p></div><div className="theme-controls"><button aria-pressed={settings.theme === 'light'} onClick={() => onSettings({ ...settings, theme: 'light' })}>{t('☀ Light')}</button><button aria-pressed={settings.theme === 'dark'} onClick={() => onSettings({ ...settings, theme: 'dark' })}>{t('☾ Dark')}</button></div></div>
       </div>}
     </Dialog>}
   </main>;

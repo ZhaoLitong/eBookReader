@@ -1,9 +1,14 @@
 export type Theme = 'light' | 'dark';
-export interface Settings { theme: Theme; fontScale: number }
-export const defaultSettings: Settings = { theme: 'light', fontScale: 100 };
+export type Language = 'en' | 'zh-CN';
+export interface Settings { theme: Theme; fontScale: number; language: Language }
+export function preferredLanguage(locale = typeof navigator === 'undefined' ? 'en' : navigator.language): Language {
+  return /^zh(?:-|$)/i.test(locale) ? 'zh-CN' : 'en';
+}
+export const defaultSettings: Settings = { theme: 'light', fontScale: 100, language: preferredLanguage() };
 export function normalizeSettings(value?: Partial<Settings>): Settings {
   return {
     theme: value?.theme === 'dark' ? 'dark' : 'light',
+    language: value?.language === 'en' || value?.language === 'zh-CN' ? value.language : preferredLanguage(),
     fontScale: typeof value?.fontScale === 'number' && value.fontScale >= 80 && value.fontScale <= 160 && value.fontScale % 10 === 0 ? value.fontScale : 100,
   };
 }

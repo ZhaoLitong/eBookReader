@@ -6,6 +6,7 @@ import type { NavItem } from 'epubjs/types/navigation';
 import type { LibraryRepository } from './repository';
 import { preparePublication } from './publication';
 import { ReaderError, type ReaderLocation, type Settings, type TocEntry } from './types';
+import { translate } from './i18n';
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 // Elements in an iframe have a different realm; instanceof Element would miss them.
@@ -135,7 +136,11 @@ export class EpubEngine implements ReaderEngine {
   }
   applySettings(settings: Settings) {
     return this.enqueue(async () => {
-      const target = this.location?.start.cfi; this.settings = settings; this.style();
+      const layoutChanged = settings.theme !== this.settings.theme || settings.fontScale !== this.settings.fontScale;
+      const target = this.location?.start.cfi; this.settings = settings;
+      this.host?.querySelectorAll('iframe').forEach(iframe => iframe.setAttribute('title', translate(settings.language, 'Book content')));
+      if (!layoutChanged) return;
+      this.style();
       await frame();
       if (target) await this.rendition?.display(target);
     });
@@ -192,7 +197,7 @@ export class EpubEngine implements ReaderEngine {
     if (this.dead) return;
     const doc = contents.document;
     const iframe = contents.window.frameElement as HTMLIFrameElement | null;
-    iframe?.setAttribute('title', 'Book content');
+    iframe?.setAttribute('title', translate(this.settings.language, 'Book content'));
     this.wireEdgeTaps(doc.documentElement, iframe);
     let start: { x: number; y: number } | null = null;
     const click = (event: MouseEvent) => {
