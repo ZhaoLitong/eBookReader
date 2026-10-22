@@ -83,6 +83,100 @@ async function updateState(page: Page, cfi: string) {
     };
   }), cfi);
 }
+for (const scenario of [
+  { name: 'desktop clicks', touch: false, width: 1100, rtl: false },
+  { name: 'phone taps', touch: true, width: 390, rtl: false },
+  { name: 'right-to-left phone taps', touch: true, width: 390, rtl: true },
+]) {
+  test.describe(scenario.name, () => {
+    test.use({ hasTouch: scenario.touch, viewport: { width: scenario.width, height: 820 } });
+    test('reader edges turn exactly one page using the visible viewport', async ({ page }) => {
+      await page.goto('/'); await importFixture(page, { rtl: scenario.rtl });
+      await expect.poll(() => savedCfi(page)).toContain('epubcfi(');
+      const first = await savedCfi(page);
+      const next = page.getByRole('button', { name: 'Next page', exact: true });
+      const previous = page.getByRole('button', { name: 'Previous page', exact: true });
+      await next.click(); await expect.poll(() => savedCfi(page)).not.toBe(first);
+      const second = await savedCfi(page);
+      await next.click(); await expect.poll(() => savedCfi(page)).not.toBe(second);
+      const third = await savedCfi(page);
+      await previous.click(); await expect.poll(() => savedCfi(page)).toBe(second);
+      await previous.click(); await expect.poll(() => savedCfi(page)).toBe(first);
+      const bounds = (await page.locator('.book-viewport').boundingBox())!;
+      const tap = async (position: 'left' | 'center' | 'right') => {
+        const x = bounds.x + (position === 'left' ? 5 : position === 'right' ? bounds.width - 5 : bounds.width / 2);
+        const y = bounds.y + bounds.height / 2;
+        if (scenario.touch) await page.touchscreen.tap(x, y);
+        else await page.mouse.click(x, y);
+      };
+      await tap('left'); await tap('center');
+      await page.waitForTimeout(500); expect(await savedCfi(page)).toBe(first);
+      await tap('right'); await expect.poll(() => savedCfi(page)).toBe(second);
+      await tap('right'); await expect.poll(() => savedCfi(page)).toBe(third);
+      await tap('left'); await expect.poll(() => savedCfi(page)).toBe(second);
+      await tap('left'); await expect.poll(() => savedCfi(page)).toBe(first);
+    });
+  });
+}
+
+test('edge clicks preserve selection, drags, long presses, links and panels', async ({ page }) => {
+  await page.goto('/'); await importFixture(page);
+  await expect.poll(() => savedCfi(page)).toContain('epubcfi(');
+  const first = await savedCfi(page);
+  const bounds = (await page.locator('.book-viewport').boundingBox())!;
+  const x = bounds.x + bounds.width - 5, y = bounds.y + 5;
+  const unchanged = async () => { await page.waitForTimeout(500); expect(await savedCfi(page)).toBe(first); };
+  await page.frameLocator('iframe').locator('p').first().evaluate(p => {
+    const range = p.ownerDocument.createRange(); range.selectNodeContents(p);
+    const selection = p.ownerDocument.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
+  });
+  await page.mouse.click(x, y); await unchanged();
+  await page.frameLocator('iframe').locator('body').evaluate(body => body.ownerDocument.getSelection()?.removeAllRanges());
+  // Raw motion avoids Playwright's drag-and-drop interception in the sandboxed iframe.
+  const input = await page.context().newCDPSession(page);
+  await page.mouse.move(x, y); await page.mouse.down();
+  await input.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x - 25, y, button: 'left', buttons: 1 });
+  await input.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left', buttons: 1 });
+  await page.mouse.up(); await input.detach();
+  await unchanged();
+  await page.mouse.click(x, y, { delay: 600 }); await unchanged();
+  await page.getByRole('button', { name: 'Reading settings', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.mouse.click(x, y); await unchanged();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const link = page.frameLocator('iframe').getByText('Visit another chapter', { exact: true });
+  const linkBounds = (await link.boundingBox())!;
+  expect(linkBounds.x - bounds.x).toBeLessThan(80);
+  await link.click({ position: { x: 2, y: linkBounds.height / 2 } });
+  await expect.poll(() => visiblePassages(page)).toContain('CH2-PASSAGE-5');
+});
+
+test.describe('short-book edge taps', () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 820 } });
+  test('edge taps cross chapters and stop at the end of the book', async ({ page }) => {
+    const zip = await JSZip.loadAsync(await fixture());
+    for (const chapter of [1, 2]) {
+      zip.file(`EPUB/chapter${chapter}.xhtml`, `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${chapter}</title></head><body><p>Short chapter ${chapter}.</p></body></html>`);
+    }
+    await page.goto('/');
+    await page.locator('input[type=file]').setInputFiles({ name: 'short.epub', mimeType: 'application/epub+zip', buffer: Buffer.from(await zip.generateAsync({ type: 'arraybuffer' })) });
+    await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeEnabled();
+    await expect.poll(() => savedCfi(page)).toContain('epubcfi(');
+    const first = await savedCfi(page);
+    const bounds = (await page.locator('.book-viewport').boundingBox())!;
+    await page.touchscreen.tap(bounds.x + bounds.width - 5, bounds.y + bounds.height / 2);
+    await expect(page.frameLocator('iframe').getByText('Short chapter 2.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeDisabled();
+    await expect.poll(() => savedCfi(page)).not.toBe(first);
+    const last = await savedCfi(page);
+    await page.touchscreen.tap(bounds.x + bounds.width - 5, bounds.y + bounds.height / 2);
+    await page.waitForTimeout(500); expect(await savedCfi(page)).toBe(last);
+    await page.touchscreen.tap(bounds.x + 5, bounds.y + bounds.height / 2);
+    await expect(page.frameLocator('iframe').getByText('Short chapter 1.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Previous page', exact: true })).toBeDisabled();
+  });
+});
+
 test('imports, reads nested contents, saves a passage, resumes, changes settings, deduplicates and removes', async ({ page }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/'); await expect(page.getByText('Your next chapter starts here.')).toBeVisible();

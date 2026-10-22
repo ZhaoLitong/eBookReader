@@ -76,9 +76,10 @@ Import errors identify the relevant category: invalid EPUB, unsupported layout, 
 The reader shows a header with Back to shelf, title, Contents, and Reading settings actions; the publication viewport; and previous/next controls with a progress indicator. Controls remain accessible without relying on hidden gestures.
 
 - Next/previous moves one rendered page and crosses chapter boundaries as necessary.
+- Tap or click the left edge of the publication viewport for Previous and the right edge for Next. Each edge covers 20% of the visible viewport, capped at 80 CSS pixels; the center does not turn pages. Taps must finish within 500 ms with no more than 10 CSS pixels of movement. Ignore text selection, links/controls, multi-touch, and open panels.
 - Left/right arrow keys navigate while the publication viewport or reader navigation is focused, excluding editable controls and open panels.
 - Horizontal swipes navigate after the drag ends. Require at least 50 CSS pixels of horizontal displacement and horizontal movement greater than vertical movement by a factor of 1.5. Do not navigate during text selection, a multi-touch gesture, or interaction with a link or control.
-- Physical gestures follow the publication's declared page progression direction. For left-to-right books, swipe left advances; for right-to-left books, swipe right advances. Label buttons by logical Previous and Next.
+- Swipes and arrow keys follow the publication's declared page progression direction. For left-to-right books, swipe left advances; for right-to-left books, swipe right advances. Edge taps and labeled buttons use logical Previous (left) and Next (right).
 - At the beginning or end, the corresponding control is disabled and further navigation is a no-op. There is no wraparound.
 - Serialize navigation and layout operations so rapid inputs cannot start overlapping rendition changes.
 - Show a loading state during initial opening. A rendering error provides Retry and Return to shelf.
@@ -187,7 +188,7 @@ Each acceptance ID must map to an automated test or a documented manual check. U
 | IMP-01 | Reject a non-EPUB, malformed package, protected content, and fixed-layout publication with category-appropriate errors and no partial entry. |
 | IMP-02 | Reject a file exceeding 100 MiB before parsing. Simulated storage/read failures leave no partial records and allow a later retry. |
 | IMP-03 | A missing cover or unsupported font obfuscation does not reject otherwise readable text. |
-| READ-01 | Buttons, keyboard, and qualified swipes move one page, including across chapters; beginning/end do not wrap. Rapid inputs do not corrupt rendition state. |
+| READ-01 | Buttons, edge taps, keyboard, and qualified swipes move one page, including across chapters; beginning/end do not wrap. Rapid inputs do not corrupt rendition state. |
 | READ-02 | Contents entries, nested targets, and internal links reach the expected passage and update saved position. A book without contents remains navigable. |
 | READ-03 | Save a passage mid-chapter, leave/reload, and reopen. The same passage appears on the restored page without waiting for location generation. |
 | READ-04 | Change font size, rotate/resize, and change theme at a marked passage. That passage remains on the visible page; settings survive reload. |

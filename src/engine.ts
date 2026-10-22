@@ -8,6 +8,8 @@ import { preparePublication } from './publication';
 import { ReaderError, type ReaderLocation, type Settings, type TocEntry } from './types';
 
 const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+// Elements in an iframe have a different realm; instanceof Element would miss them.
+const interactive = (target: EventTarget | null) => !!(target as Element | null)?.closest?.('a,button,input,textarea,select,[contenteditable]');
 export function withTimeout<T>(promise: Promise<T>, label: string, milliseconds = 20000): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   return Promise.race([promise, new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new ReaderError('render', `${label} took too long. Try again or choose a smaller EPUB.`)), milliseconds); })]).finally(() => clearTimeout(timer));
@@ -36,6 +38,7 @@ export class EpubEngine implements ReaderEngine {
   setInteractionEnabled(enabled: boolean) { this.interactionEnabled = enabled; }
   async open(host: HTMLElement, blob: Blob, cfi: string | null, settings: Settings) {
     this.host = host; this.settings = settings;
+    this.wireEdgeTaps(host);
     const prepared = await withTimeout(preparePublication(await blob.arrayBuffer()), 'Preparing this book');
     if (this.dead) return [];
     this.direction = prepared.direction;
@@ -148,14 +151,50 @@ export class EpubEngine implements ReaderEngine {
     });
     this.rendition?.themes.fontSize(this.settings.fontScale + '%');
   }
+  private wireEdgeTaps(target: HTMLElement, iframe?: HTMLIFrameElement | null) {
+    let start: { x: number; y: number; time: number } | null = null;
+    const hasSelection = () => !!target.ownerDocument.getSelection()?.toString() ||
+      Array.from(target.querySelectorAll('iframe')).some(frame => !!frame.contentDocument?.getSelection()?.toString());
+    const cancel = () => { start = null; };
+    const down = (event: PointerEvent) => {
+      start = this.ready && this.interactionEnabled && event.isPrimary && event.button === 0 && !interactive(event.target) && !hasSelection()
+        ? { x: event.clientX, y: event.clientY, time: event.timeStamp } : null;
+    };
+    const move = (event: PointerEvent) => {
+      if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) cancel();
+    };
+    const click = (event: MouseEvent) => {
+      const origin = start; cancel();
+      if (!origin || !this.ready || !this.interactionEnabled || !this.host || event.defaultPrevented ||
+        event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+        interactive(event.target) || hasSelection() || event.timeStamp - origin.time > 500 ||
+        Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10) return;
+      // Paginated chapter frames can be many pages wide and shifted off screen.
+      // Translate the tap into the visible host's coordinates, not the frame's width.
+      const bounds = this.host.getBoundingClientRect();
+      const frameBounds = iframe?.getBoundingClientRect();
+      const x = event.clientX + (frameBounds?.left ?? 0) - bounds.left;
+      const y = event.clientY + (frameBounds?.top ?? 0) - bounds.top;
+      if (x < 0 || x > bounds.width || y < 0 || y > bounds.height) return;
+      const edge = Math.min(80, bounds.width * 0.2);
+      if (x > edge && x < bounds.width - edge) return;
+      event.preventDefault();
+      void (x <= edge ? this.previous() : this.next()).catch(this.onError);
+    };
+    target.addEventListener('pointerdown', down); target.addEventListener('pointermove', move);
+    target.addEventListener('pointercancel', cancel); target.addEventListener('click', click);
+    this.cleanups.push(() => {
+      target.removeEventListener('pointerdown', down); target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointercancel', cancel); target.removeEventListener('click', click);
+    });
+  }
   private wireDocument(contents: Contents) {
     if (this.dead) return;
     const doc = contents.document;
     const iframe = contents.window.frameElement as HTMLIFrameElement | null;
     iframe?.setAttribute('title', 'Book content');
+    this.wireEdgeTaps(doc.documentElement, iframe);
     let start: { x: number; y: number } | null = null;
-    // Elements in an iframe have a different realm; instanceof Element would miss them.
-    const interactive = (target: EventTarget | null) => !!(target as Element | null)?.closest?.('a,button,input,textarea,select,[contenteditable]');
     const click = (event: MouseEvent) => {
       const target = event.target as Element;
       const link = target.closest('a');
