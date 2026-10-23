@@ -1,4 +1,4 @@
-# EPUB Reader specification
+# eBook Reader specification
 
 Version: 1.0  
 Status: implementation baseline  
@@ -6,7 +6,7 @@ Date: 2026-10-20
 
 ## 1. Purpose and scope
 
-Build an offline EPUB reader for Android with a browser development version. Use TypeScript, React, Vite, epub.js, and Capacitor so routine development can happen in a browser on a Windows machine with limited memory. A physical Android phone is the preferred mobile test target; an emulator is optional.
+Build an offline eBook reader for Android with a browser development version. Use TypeScript, React, Vite, epub.js, and Capacitor so routine development can happen in a browser on a Windows machine with limited memory. A physical Android phone is the preferred mobile test target; an emulator is optional.
 
 The first release must support:
 
@@ -25,7 +25,7 @@ This document is the behavior and acceptance reference for implementation. Chang
 
 | Decision | Requirement |
 | --- | --- |
-| Working application name | EPUB Reader |
+| Working application name | eBook Reader |
 | Interface language | English; publication text and Unicode metadata are preserved |
 | Network/backend | No backend, accounts, analytics, or remote book downloads |
 | Reading layout | One paginated page, including on wide screens; no two-page spread or scrolling mode |

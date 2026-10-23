@@ -80,7 +80,7 @@ export function Reader({ book, settings, onSettings, onExit, settingsError }: { 
     {notice && <div className="notice" role="status"><span>{t(notice)}</span><button aria-label={t('Dismiss notice')} onClick={() => setNotice('')}>×</button></div>}
     {settingsError && <div className="notice error" role="alert"><span>{t(settingsError)}</span><button onClick={() => onSettings(settings)}>{t('Retry settings save')}</button></div>}
     {unsaved && <div className="notice error" role="alert"><span>{t('Progress has not been saved. Check available storage.')}</span><button onClick={() => void writer.current?.flush()}>{t('Retry save')}</button></div>}
-    <section className="reading-paper" aria-label={t('EPUB reader')}>
+    <section className="reading-paper" aria-label={t('eBook reader')}>
       <div ref={host} className="book-viewport" tabIndex={0} aria-label={t('Book pages')} onKeyDown={event => {
         if (panel || busy || failure || !['ArrowLeft', 'ArrowRight'].includes(event.key) || (event.target as HTMLElement).closest('button,input')) return;
         event.preventDefault(); void engine.current?.physicalArrow(event.key === 'ArrowRight').catch(() => setFailure('This page could not be displayed. Retry opening the book.'));

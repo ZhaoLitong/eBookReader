@@ -53,7 +53,7 @@ export function App() {
     return () => { alive = false; };
   }, [id, shelf]);
   useEffect(() => { document.documentElement.dataset.theme = settings.theme; document.querySelector('meta[name="theme-color"]')?.setAttribute('content', settings.theme === 'dark' ? '#18211e' : '#f5f2eb'); }, [settings]);
-  useEffect(() => { document.documentElement.lang = settings.language; document.title = translate(settings.language, 'EPUB Reader'); }, [settings.language]);
+  useEffect(() => { document.documentElement.lang = settings.language; document.title = translate(settings.language, 'eBook Reader'); }, [settings.language]);
   const changeSettings = (next: Settings) => {
     setSettings(next);
     settingsWrite.current = settingsWrite.current.then(() => library.saveSettings(next)).then(() => setSettingsError('')).catch(() => setSettingsError('Reading settings could not be saved. Check your available storage.'));
@@ -75,7 +75,7 @@ export function App() {
   };
   if (id && selected && !storageError && !loading) return <LanguageContext.Provider value={settings.language}><Reader key={selected.id} book={selected} settings={settings} onSettings={changeSettings} onExit={shelf} settingsError={settingsError} /></LanguageContext.Provider>;
   return <LanguageContext.Provider value={settings.language}><div className="shelf-screen">
-    <header className="shelf-header"><a className="brand" href="#/" aria-label={t('EPUB Reader home')}><span className="brand-mark">▤</span><span>{t('EPUB Reader')}<span className="brand-caption">{t('A PLACE FOR YOUR PAGES')}</span></span></a><div className="shelf-tools"><LanguagePicker settings={settings} onChange={changeSettings} /><button className="theme-toggle" aria-label={t(settings.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme')} onClick={() => changeSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}>{settings.theme === 'light' ? '☾' : '☀'}</button></div></header>
+    <header className="shelf-header"><a className="brand" href="#/" aria-label={t('eBook Reader home')}><span className="brand-mark">▤</span><span>{t('eBook Reader')}<span className="brand-caption">{t('A PLACE FOR YOUR PAGES')}</span></span></a><div className="shelf-tools"><LanguagePicker settings={settings} onChange={changeSettings} /><button className="theme-toggle" aria-label={t(settings.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme')} onClick={() => changeSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}>{settings.theme === 'light' ? '☾' : '☀'}</button></div></header>
     <main className="shelf-main">
       <div className="shelf-intro"><div><p className="eyebrow">{t('YOUR PERSONAL LIBRARY')}</p><h1>{t('A little room')}<br />{t('for your next chapter.')}</h1><p className="intro-copy">{t('Your books, your pace. Pick up right where you left off.')}</p></div><div className="intro-art" aria-hidden="true"><div className="sun" /><div className="art-book one" /><div className="art-book two" /><div className="art-book three" /><div className="art-shelf" /></div></div>
       <section aria-labelledby="shelf-title"><div className="section-heading"><div><h2 id="shelf-title">{t('On your shelf')} <span className="book-count">{books.length}</span></h2><p>{t(books.length ? 'A good story is always within reach.' : 'Good things begin with an open book.')}</p></div><button className="primary" disabled={importing || storageError || loading} onClick={() => picker.current?.click()}>{t(importing ? 'Importing…' : '+ Import book')}</button></div>

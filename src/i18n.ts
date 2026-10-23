@@ -4,8 +4,8 @@ import type { Language } from './types';
 // notices and asynchronous errors also follow a language change immediately.
 const chinese: Record<string, string> = {
   'Language': '语言',
-  'EPUB Reader': 'EPUB 阅读器',
-  'EPUB Reader home': 'EPUB 阅读器首页',
+  'eBook Reader': '电子书阅读器',
+  'eBook Reader home': '电子书阅读器首页',
   'A PLACE FOR YOUR PAGES': '让每一页都有归处',
   'Switch to dark theme': '切换到深色主题',
   'Switch to light theme': '切换到浅色主题',
@@ -55,7 +55,7 @@ const chinese: Record<string, string> = {
   'Reading settings': '阅读设置',
   'Progress has not been saved. Check available storage.': '阅读进度尚未保存，请检查可用存储空间。',
   'Retry save': '重新保存',
-  'EPUB reader': 'EPUB 阅读区域',
+  'eBook reader': '电子书阅读区域',
   'Book pages': '书籍页面',
   'Book content': '书籍内容',
   'Opening your book…': '正在打开书籍…',

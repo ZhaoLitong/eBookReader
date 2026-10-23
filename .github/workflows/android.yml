@@ -49,6 +49,6 @@ jobs:
           ./gradlew assembleDebug --no-daemon --max-workers=2
       - uses: actions/upload-artifact@v6
         with:
-          name: epub-reader-debug
+          name: ebook-reader-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
